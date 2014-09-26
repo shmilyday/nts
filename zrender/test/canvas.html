@@ -3,6 +3,9 @@
 <head lang="en">
     <meta charset="UTF-8">
     <title></title>
+    <style>
+    	* {margin:0;padding:0;}
+    </style>
 </head>
 <body>
 <canvas height="1400" width="1400" id="canvasId"></canvas>
@@ -13,11 +16,17 @@
         var canvasDom = document.getElementById('canvasId'),
                 context = canvasDom.getContext('2d');
 
-        context.lineWidth = 10;
+        context.lineWidth = 50;
         context.arc(100, 100, 50, 0, Math.PI * 2);
         context.stroke();
+        
+        context.lineWidth = 1;
+        context.moveTo(0,100);
+        context.lineTo(200,100);
+        
+        context.stroke();
 
-        context.strokeRect(300,100,200,100);
+        //context.strokeRect(300,100,200,100);
     });
 
 </script>

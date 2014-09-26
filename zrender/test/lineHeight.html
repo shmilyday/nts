@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title></title>
+    <style>
+    	* {margin:0;padding:0;}
+    </style>
+</head>
+<body>
+<canvas height="1400" width="1400" id="canvasId"></canvas>
+<script>
+
+    document.addEventListener('DOMContentLoaded', function () {
+
+        var canvasDom = document.getElementById('canvasId'),
+                context = canvasDom.getContext('2d');
+
+        context.lineWidth = 1;
+        context.moveTo(0,100);
+        context.lineTo(300,100);
+        context.stroke();
+        
+        context.moveTo(100,0);
+		context.lineTo(100,300);
+		context.stroke();
+		
+		context.textAlign = 'left';
+		context.textBaseline = 'bottom';
+		context.fillText('align:left;base:bottom',100,100);
+		
+		context.textAlign = 'right';
+		context.textBaseline = 'bottom';
+		context.fillText('align:right;base:bottom',100,100);
+		
+		
+		context.textAlign = 'left';
+		context.textBaseline = 'top';
+		context.fillText('align:left;base:top',100,100);
+		
+		context.textAlign = 'right';
+		context.textBaseline = 'top';
+		context.fillText('align:right;base:top',100,100);
+		
+        //context.strokeRect(300,100,200,100);
+    });
+
+</script>
+</body>
+</html>

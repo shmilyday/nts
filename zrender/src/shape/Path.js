@@ -91,10 +91,12 @@ define(function (require) {
                 'c', 'C', 'q', 'Q', 't', 'T', 's', 'S', 'a', 'A'
             ];
             
-            cs = cs.replace(/-/g, ' -');
-            cs = cs.replace(/  /g, ' ');
-            cs = cs.replace(/ /g, ',');
-            cs = cs.replace(/,,/g, ',');
+            cs = cs.replace(/-/g, ' -');// M 100 100 L 100 200 L 100-200 Z -> M 100 100 L 100 200 L 100 -200 Z
+            cs = cs.replace(/  /g, ' ');// M 100 100 L 100 200 L 100 -200 -> M 100 100 L 100 200 L 100  -200 -> M 100 100 L 100 200 L 100 -200
+            cs = cs.replace(/ /g, ',');// M 100 100 L 100 200 L 100 -200 -> M,100,100,L,100,200,L,100,-200
+            cs = cs.replace(/,,/g, ',');//如果出现两个逗号，换成一个逗号 -> M,100,100,L,100,200,L,100,-200
+            
+            //cs = cs.replace(/-/g, ' -').replace(/  /g, ' ').replace(/ /g, ',').replace(/,,/g, ','); 这样写，会不会很帅气,(-
             
 
             var n;
@@ -102,27 +104,33 @@ define(function (require) {
             for (n = 0; n < cc.length; n++) {
                 cs = cs.replace(new RegExp(cc[n], 'g'), '|' + cc[n]);
             }
+            
+            // |M,100,100,|L,100,200,|L,100,-200
 
             // create array
-            var arr = cs.split('|');
+            var arr = cs.split('|'); // ['','M,100,100,','L,100,200,','L,100,-200']
             var ca = [];
             // init context point
-            var cpx = 0;
+            var cpx = 0; //cpx和cpy是循环里的全局都在使用，小写命令是累计计算，大写命令是复制计算。
             var cpy = 0;
-            for (n = 1; n < arr.length; n++) {
-                var str = arr[n];
-                var c = str.charAt(0);
-                str = str.slice(1);
+            for (n = 1; n < arr.length; n++) { // 从1开始，因为第一个元素肯定为空
+                var str = arr[n]; // M,100,100,
+                var c = str.charAt(0); // M
+                str = str.slice(1); //,100,100,
                 str = str.replace(new RegExp('e,-', 'g'), 'e-');
 
-                var p = str.split(',');
+                var p = str.split(',');// ['','100','100','']
                 if (p.length > 0 && p[0] === '') {
                     p.shift();
                 }
+                // ['100','100','']
 
                 for (var i = 0; i < p.length; i++) {
                     p[i] = parseFloat(p[i]);
                 }
+                
+                // [100,100,NaN]
+                
                 while (p.length > 0) {
                     if (isNaN(p[0])) {
                         break;
@@ -156,6 +164,8 @@ define(function (require) {
                         cpy = p.shift();
                         points.push(cpx, cpy);
                         break;
+                    //在l的时候，是直接相加的，而L的时候，是直接赋值的 ，这就说明大小写是不一样的   
+                    // L 表示lineTo
                     case 'm':
                         cpx += p.shift();
                         cpy += p.shift();
@@ -170,7 +180,7 @@ define(function (require) {
                         points.push(cpx, cpy);
                         c = 'L';
                         break;
-
+					// M 表示moveTo
                     case 'h':
                         cpx += p.shift();
                         cmd = 'L';
@@ -181,6 +191,7 @@ define(function (require) {
                         cmd = 'L';
                         points.push(cpx, cpy);
                         break;
+                    // H 表示水平lineTo，只改变X值
                     case 'v':
                         cpy += p.shift();
                         cmd = 'L';
@@ -191,6 +202,7 @@ define(function (require) {
                         cmd = 'L';
                         points.push(cpx, cpy);
                         break;
+                    // H 表示垂直lineTo，只改变Y值
                     case 'C':
                         points.push(p.shift(), p.shift(), p.shift(), p.shift());
                         cpx = p.shift();
@@ -207,6 +219,7 @@ define(function (require) {
                         cmd = 'C';
                         points.push(cpx, cpy);
                         break;
+                    // C表示二次贝塞尔曲线
                     case 'S':
                         ctlPtx = cpx;
                         ctlPty = cpy;
@@ -237,6 +250,7 @@ define(function (require) {
                         cmd = 'C';
                         points.push(cpx, cpy);
                         break;
+                    // C表示光滑二次贝塞尔曲线
                     case 'Q':
                         points.push(p.shift(), p.shift());
                         cpx = p.shift();
@@ -250,6 +264,7 @@ define(function (require) {
                         cmd = 'Q';
                         points.push(cpx, cpy);
                         break;
+                    // Q表示三次贝塞尔曲线
                     case 'T':
                         ctlPtx = cpx, ctlPty = cpy;
                         prevCmd = ca[ca.length - 1];
@@ -274,6 +289,7 @@ define(function (require) {
                         cmd = 'Q';
                         points.push(ctlPtx, ctlPty, cpx, cpy);
                         break;
+                    // Q表示光滑三次贝塞尔曲线
                     case 'A':
                         rx = p.shift();
                         ry = p.shift();
@@ -303,7 +319,7 @@ define(function (require) {
                             x1, y1, cpx, cpy, fa, fs, rx, ry, psi
                         );
                         break;
-
+					// A是啥玩意？
                     }
 
                     ca.push({
@@ -311,7 +327,8 @@ define(function (require) {
                         points : points
                     });
                 }
-
+                
+                //如果是z，z不去分大小写，直接push进入，points为空数组
                 if (c === 'z' || c === 'Z') {
                     ca.push({
                         command : 'z',
@@ -447,6 +464,8 @@ define(function (require) {
                     case 'Q':
                         ctx.quadraticCurveTo(p[0], p[1], p[2], p[3]);
                         break;
+                    // 这几个做法就比较明显了，调用了原生CanvasAPI，但是A呢，对了，在SVG中，是弧形，
+                    // 文档中也不写，作者好低调，赞！
                     case 'A':
                         var cx = p[0];
                         var cy = p[1];
