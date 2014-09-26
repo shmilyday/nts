@@ -66,6 +66,9 @@
    }
 
  **/
+ 
+// https://developer.mozilla.org/en/docs/Web/SVG/Tutorial/Paths
+// http://xbingoz.com/320.html
 
 define(function (require) {
     var Base = require('./Base');
@@ -291,14 +294,14 @@ define(function (require) {
                         break;
                     // Q表示光滑三次贝塞尔曲线
                     case 'A':
-                        rx = p.shift();
-                        ry = p.shift();
-                        psi = p.shift();
-                        fa = p.shift();
-                        fs = p.shift();
+                        rx = p.shift(); //椭圆的x轴半径
+                        ry = p.shift(); //椭圆的y轴半径
+                        psi = p.shift();//椭圆的旋转角度
+                        fa = p.shift();//角度大小  0表示小角度，1表示大弧度
+                        fs = p.shift();//弧线方向  0表示从起点到终点沿逆时针画弧，1表示从起点到终点沿顺时针画弧
 
-                        x1 = cpx, y1 = cpy;
-                        cpx = p.shift(), cpy = p.shift();
+                        x1 = cpx, y1 = cpy; //开始的点
+                        cpx = p.shift(), cpy = p.shift(); //结束的点
                         cmd = 'A';
                         points = this._convertPoint(
                             x1, y1, cpx, cpy, fa, fs, rx, ry, psi
@@ -427,24 +430,24 @@ define(function (require) {
             var pointList = style.pointList = [];
             var singlePointList = [];
             for (var i = 0, l = pathArray.length; i < l; i++) {
-                if (pathArray[i].command.toUpperCase() == 'M') {
+                if (pathArray[i].command.toUpperCase() == 'M') { // 如果是M，说明又画了一个新的区域，就把原来的singlePointList塞入到最终结果中，再把singlePointList清空
                     singlePointList.length > 0 
                     && pointList.push(singlePointList);
                     singlePointList = [];
                 }
                 p = pathArray[i].points;
-                for (var j = 0, k = p.length; j < k; j += 2) {
+                for (var j = 0, k = p.length; j < k; j += 2) { //把所有的point点塞入singlePointList
                     singlePointList.push([p[j] + x, p[j+1] + y]);
                 }
             }
-            singlePointList.length > 0 && pointList.push(singlePointList);
+            singlePointList.length > 0 && pointList.push(singlePointList); //如果存在点，塞入最终结果里
             
             var c;
             for (var i = 0, l = pathArray.length; i < l; i++) {
                 c = pathArray[i].command;
                 p = pathArray[i].points;
                 // 平移变换
-                for (var j = 0, k = p.length; j < k; j++) {
+                for (var j = 0, k = p.length; j < k; j++) { //style.x和style.y是一个参考点
                     if (j % 2 === 0) {
                         p[j] += x;
                     } else {

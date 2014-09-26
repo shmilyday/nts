@@ -1,0 +1,8 @@
+<svg version="1.1" baseProfile="full" xmlns="http://www.w3.org/2000/svg">
+	<path d="M80 80
+		A 45 45, 0, 0, 0, 125 125
+		L 125 80 Z" fill="#F60"/>
+	<path d="M230 80
+		A 45 45, 0, 1, 0, 275 125
+		L 275 80 Z" fill="#F60"/>
+</svg>
