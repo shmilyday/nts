@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+<meta charset="UTF-8">
+<title>ZRender源码分析4：Painter(View层)-中</title>
+<link rel="styleSheet" href="../bootstrap/css/bootstrap.css">
+</head>
+<body>
+	<h2>回顾</h2>
+	<p>
+		上一篇说到：<a href="http://www.cnblogs.com/hhstuhacker/p/zrender-source-painter-part1.html" target="_blank">ZRender源码分析3：Painter(View层)-上</a>，接上篇，开始Shape对象
+	</p>
+	<h2>总体理解</h2>
+	<p>
+		先回到上次的Painter的render方法
+<div class="cnblogs_code">
+<pre><span style="color: #000000;">
+/**
+ * 首次绘图，创建各种dom和context
+ * 核心方法，zr.render() --> painter.render
+ *
+ * render和refersh的区别：render是clear所有，refresh是清除已经改变的layer
+ *
+ * @param {Function=} callback 绘画结束后的回调函数
+ */
+Painter.prototype.render = function (callback) {
+	//省略
+    //升序遍历，shape上的zlevel指定绘画图层的z轴层叠
+    this.storage.iterShape(
+        this._brush({ all : true }),
+        { normal: 'up' }
+    );
+
+    //省略
+    return this;
+};
+/**
+ * 刷画图形
+ * 
+ * @private
+ * @param {Object} changedZlevel 需要更新的zlevel索引
+ */
+Painter.prototype._brush = function (changedZlevel) {
+    var ctxList = this._ctxList;
+    var me = this;
+    function updatePainter(shapeList, callback) {
+        me.update(shapeList, callback);
+    }
+
+    return function(shape) {
+        if ((changedZlevel.all || changedZlevel[shape.zlevel])
+            && !shape.invisible
+        ) {
+            var ctx = ctxList[shape.zlevel];
+            if (ctx) {
+                if (!shape.onbrush //没有onbrush
+                    //有onbrush并且调用执行返回false或undefined则继续粉刷
+                    || (shape.onbrush && !shape.onbrush(ctx, false))
+                ) {
+                    if (config.catchBrushException) {
+                        try {
+                            shape.brush(ctx, false, updatePainter);
+                        }
+                        catch(error) {
+                            log(
+                                error,
+                                'brush error of ' + shape.type,
+                                shape
+                            );
+                        }
+                    }
+                    else {
+                        shape.brush(ctx, false, updatePainter);
+                    }
+                }
+            }
+            else {
+                log(
+                    'can not find the specific zlevel canvas!'
+                );
+            }
+        }
+    };
+};
+</span></pre>
+</div>
+	可以看到，在最核心处，便是调用了storage的遍历shape对象方法，传入的回调便是Painter._brush方法，
+	逻辑转入到_brush方法，这里返回一个回调，在回调中，直接调用了shape对象的brush方法，可见，最后还是要到shape对象中去了。
+	</p>
+	<h3>Shape对象</h3>
+	<p>
+		打开zrender的shape文件夹，可以看到，有很多个JS，其中，Base类是一个基类，而其他的文件都各自是一个图形类，都继承自Base类。
+		很明确的是，这里用的是一个模板方法，接下来，用最简单的Circle类来分析源码。先看Circle的结构。
+<div class="cnblogs_code">
+<pre><span style="color: #000000;">
+function Circle(options) {
+            Base.call(this, options);
+}
+Circle.prototype = {
+    type: 'circle',
+    /**
+     * 创建圆形路径
+     * @param {Context2D} ctx Canvas 2D上下文
+     * @param {Object} style 样式
+     */
+    buildPath : function (ctx, style) { //省略实现
+    },
+
+    /**
+     * 返回矩形区域，用于局部刷新和文字定位
+     * @param {Object} style
+     */
+    getRect : function (style) { //省略实现
+    }
+};
+
+require('../tool/util').inherits(Circle, Base);
+</span></pre>
+</div>
+	最后一行比较重要，继承了Base类，而Base类实现了brush方法，看见Circle实现的buildPath和getRect方法和type属性，应该就是覆盖了Base类的同名方法吧。
+	来看Base类，依旧是function Base() {} Base.prototype.baba = funciton () {}，构造中先设置了一些默认值，然后用用户自定义的option进行覆盖。
+<div class="cnblogs_code">
+<pre><span style="color: #000000;">
+ function Base( options ) {
+     this.id = options.id || guid();
+     this.zlevel = 0;
+     this.draggable = false;
+     this.clickable = false;
+     this.hoverable = true;
+     this.position = [0, 0];
+     this.rotation = [0, 0, 0];
+     this.scale = [1, 1, 0, 0];
+
+     for ( var key in options ) {
+         this[ key ] = options[ key ];
+     }
+
+     this.style = this.style || {};
+ }
+</span></pre>
+</div>
+	再来看核心方法brush
+<div class="cnblogs_code">
+<pre><span style="color: #000000;">
+/**
+ * 画刷
+ * 
+ * @param ctx       画布句柄
+ * @param isHighlight   是否为高亮状态
+ * @param updateCallback 需要异步加载资源的shape可以通过这个callback(e)
+ *                       让painter更新视图，base.brush没用，需要的话重载brush
+ */
+Base.prototype.brush = function (ctx, isHighlight) {
+    var style = this.style;
+
+    //比如LineShape，配置的有brushTypeOnly
+    if (this.brushTypeOnly) {
+        style.brushType = this.brushTypeOnly;
+    }
+
+    if (isHighlight) {
+        // 根据style扩展默认高亮样式
+        style = this.getHighlightStyle(
+            style,
+            this.highlightStyle || {},
+            this.brushTypeOnly
+        );
+    }
+
+    if (this.brushTypeOnly == 'stroke') {
+        style.strokeColor = style.strokeColor || style.color;
+    }
+
+    ctx.save();
+
+    //根据style设置content对象
+    this.setContext(ctx, style);
+
+    // 设置transform
+    this.updateTransform(ctx);
+
+    ctx.beginPath();
+    this.buildPath(ctx, style);
+    if (this.brushTypeOnly != 'stroke') {
+        ctx.closePath();
+    }
+
+    switch (style.brushType) {
+        case 'both':
+            ctx.fill();
+        case 'stroke':
+            style.lineWidth > 0 && ctx.stroke();
+            break;
+        default:
+            ctx.fill();
+    }
+
+    if (style.text) {
+        this.drawText(ctx, style, this.style);
+    }
+
+    ctx.restore();
+};
+</span></pre>
+</div>
+	<ul>
+		<li>1.设置brushTypeOnly，brushType有三种形式：both,stroke,fill。比如在LineShape对象中，划线是不可能fill的，只能是stroke，所以由此特殊处理</li>
+		<li>
+			2.根据当前shape的style来获取适合的highlightStyle,转入到getHighlightStyle。
+<div class="cnblogs_code">
+<pre><span style="color: #000000;">
+/**
+ * 根据默认样式扩展高亮样式
+ * 
+ * @param ctx Canvas 2D上下文
+ * @param {Object} style 默认样式
+ * @param {Object} highlightStyle 高亮样式
+ */
+Base.prototype.getHighlightStyle = function (style, highlightStyle, brushTypeOnly) {
+    var newStyle = {};
+    for (var k in style) {
+        newStyle[k] = style[k];
+    }
+
+    var color = require('../tool/color');
+    var highlightColor = color.getHighlightColor(); // rgba(255,255.0.0.5) 半透明黄色
+    // 根据highlightStyle扩展
+    if (style.brushType != 'stroke') {
+        // 带填充则用高亮色加粗边线
+        newStyle.strokeColor = highlightColor;
+        newStyle.lineWidth = (style.lineWidth || 1)
+                              + this.getHighlightZoom(); //如果是文字，就是6，如果不是文字，是2
+        newStyle.brushType = 'both'; //如果高亮层并且brushType为both或者fill，强制其为both
+    }
+    else {
+        if (brushTypeOnly != 'stroke') {
+            // 描边型的则用原色加工高亮
+            newStyle.strokeColor = highlightColor;
+            newStyle.lineWidth = (style.lineWidth || 1)
+                                  + this.getHighlightZoom();
+        } 
+        else {
+            // 线型的则用原色加工高亮
+            newStyle.strokeColor = highlightStyle.strokeColor
+                                   || color.mix(
+                                         style.strokeColor,
+                                         color.toRGB(highlightColor)
+                                      );
+        }
+    }
+
+    // 可自定义覆盖默认值
+    for (var k in highlightStyle) {
+        if (typeof highlightStyle[k] != 'undefined') {
+            newStyle[k] = highlightStyle[k];
+        }
+    }
+
+    return newStyle;
+};
+</span></pre>
+</div>
+			<ul>
+				<li>先将默认的样式拷贝到newStyle变量中，在方法末尾，返回newStyle</li>
+				<li>根据默认的样式计算出高亮的样式，如果brushType为both或者fill，将strokeColor变成半透明的黄色，根据图形类型算出lineWidth，将brushType赋值为both</li>
+				<li>如果brushType为stroke，再如果brushOnly没有被设置为stroke，将strokeCOlor设置为半透明黄色，设置lineWidth</li>
+				<li>如果brushType为stroke，没有设置brushOnly为stroke，就用color.mix计算出一个颜色值</li>
+				<li>最后将用户自定义的highlightStyle覆盖到newStyle，返回newStyle</li>
+			</ul>
+		</li>
+		<li>如果brushTypeOnly为stroke，处理color的多个出处，然后就是ctx.save()与ctx.restore()之间的真正绘图了。</li>
+		<li>
+			转到setContext方法
+<div class="cnblogs_code">
+<pre><span style="color: #000000;">
+var STYLE_CTX_MAP = [
+    ['color', 'fillStyle'],
+    ['strokeColor', 'strokeStyle'],
+    ['opacity', 'globalAlpha'],
+    ['lineCap'],
+    ['lineJoin'],
+    ['miterLimit'],
+    ['lineWidth'],
+    ['shadowBlur'],
+    ['shadowColor'],
+    ['shadowOffsetX'],
+    ['shadowOffsetY']
+];
+
+/**
+ * 画布通用设置
+ * 
+ * @param ctx       画布句柄
+ * @param style     通用样式
+ */
+Base.prototype.setContext = function (ctx, style) {
+    for (var i = 0, len = STYLE_CTX_MAP.length; i < len; i++) {
+        var styleProp = STYLE_CTX_MAP[i][0];
+        var styleValue = style[styleProp];
+        var ctxProp = STYLE_CTX_MAP[i][1] || styleProp;
+
+        if (typeof styleValue != 'undefined') {
+            ctx[ctxProp] = styleValue;
+        }
+    }
+};
+</span></pre>
+</div>	
+			在原生的context赋值样式时，都是context.fillStyle = '#aaa'; 但是经过zrender的抽象变得更加的易用，setContext就是负责原生canvasAPI与zrender.shape.style的转换，
+			其实有变化的就只有fillStyle,strokeStyle,globalAlpha。分别用style.color,style.strokeColor,opacity进行替换，不过这些原生API的属性名确实不那么平易近人。
+		</li>
+		<li>关于变形，暂时跳过</li>
+		<li>
+			开始beginPath，然后调用Base.buildPath，发现Base中没有buildPath的实现，上面说了嘛，在子类实现了，模板方法。下面举例 进行buildPath的分析
+<div class="cnblogs_code">
+<pre><span style="color: #000000;">
+// shape/Circle.js
+
+/**
+ * 创建圆形路径
+ * @param {Context2D} ctx Canvas 2D上下文
+ * @param {Object} style 样式
+ */
+buildPath : function (ctx, style) {
+    ctx.arc(style.x, style.y, style.r, 0, Math.PI * 2, true);
+    return;
+},
+
+//shape/Rectangle
+/**
+ * 创建矩形路径
+ * @param {Context2D} ctx Canvas 2D上下文
+ * @param {Object} style 样式
+ */
+buildPath : function(ctx, style) {
+    if(!style.radius) {
+        ctx.moveTo(style.x, style.y);
+        ctx.lineTo(style.x + style.width, style.y);
+        ctx.lineTo(style.x + style.width, style.y + style.height);
+        ctx.lineTo(style.x, style.y + style.height);
+        ctx.lineTo(style.x, style.y);
+        //ctx.rect(style.x, style.y, style.width, style.height);
+    } else {
+        this._buildRadiusPath(ctx, style);
+    }
+    return;
+},
+
+</span></pre>
+</div>
+			可以看到，在Circle类的buildPath中，只有一句话，那就是真正的Canvas画图的API调用，而在Rectangle中，用moveTo和lineTo画出了一个路径出来。
+		</li>
+		<li>如果是只能划线的shape，没有必要closePath，否则colsePath,以避免图形的乱线出现，然后根据brushType的类型，进行fill和stroke，注意，第一个case没有break，所以fill和stroke可以同时进行</li>
+		<li>
+			最后，处理图形上附属的文字。
+<div class="cnblogs_code">
+<pre><span style="color: #000000;">
+Base.prototype.drawText = function (ctx, style, normalStyle) {
+    // 字体颜色策略
+    var textColor = style.textColor || style.color || style.strokeColor;
+    ctx.fillStyle = textColor;
+
+    /*
+    if (style.textPosition == 'inside') {
+        ctx.shadowColor = 'rgba(0,0,0,0)';   // 内部文字不带shadowColor
+    }
+    */
+
+    // 文本与图形间空白间隙
+    var dd = 10;
+    var al;         // 文本水平对齐
+    var bl;         // 文本垂直对齐
+    var tx;         // 文本横坐标
+    var ty;         // 文本纵坐标
+
+    var textPosition = style.textPosition       // 用户定义
+                       || this.textPosition     // shape默认
+                       || 'top';                // 全局默认
+
+    switch (textPosition) {
+        case 'inside': 
+        case 'top': 
+        case 'bottom': 
+        case 'left': 
+        case 'right': 
+            if (this.getRect) {
+                var rect = (normalStyle || style).__rect
+                           || this.getRect(normalStyle || style);
+
+                switch (textPosition) {
+                    case 'inside':
+                        tx = rect.x + rect.width / 2;
+                        ty = rect.y + rect.height / 2;
+                        al = 'center';
+                        bl = 'middle';
+                        // 如果brushType为both或者fill，那么就会有fill动作，这时，如果文字颜色跟填充颜色相同，文字就看不见了，所以把它变成白色
+                        // 但是，如果文字颜色是白色呢，哎，不想了，太变态
+                        if (style.brushType != 'stroke'
+                            && textColor == style.color
+                        ) {
+                            ctx.fillStyle = '#fff';
+                        }
+                        break;
+                    case 'left':
+                        tx = rect.x - dd; //间隙
+                        ty = rect.y + rect.height / 2;
+                        al = 'end';
+                        bl = 'middle';
+                        break;
+                    case 'right':
+                        tx = rect.x + rect.width + dd;
+                        ty = rect.y + rect.height / 2;
+                        al = 'start';
+                        bl = 'middle';
+                        break;
+                    case 'top':
+                        tx = rect.x + rect.width / 2;
+                        ty = rect.y - dd;
+                        al = 'center';
+                        bl = 'bottom';
+                        break;
+                    case 'bottom':
+                        tx = rect.x + rect.width / 2;
+                        ty = rect.y + rect.height + dd;
+                        al = 'center';
+                        bl = 'top';
+                        break;
+                }
+            }
+            break;
+        case 'start':
+        case 'end':
+            var xStart;
+            var xEnd;
+            var yStart;
+            var yEnd;
+            if (typeof style.pointList != 'undefined') {
+                var pointList = style.pointList;
+                if (pointList.length < 2) {
+                    // 少于2个点就不画了~
+                    return;
+                }
+                var length = pointList.length;
+                switch (textPosition) {
+                    case 'start':
+                        xStart = pointList[0][0];
+                        xEnd = pointList[1][0];
+                        yStart = pointList[0][1];
+                        yEnd = pointList[1][1];
+                        break;
+                    case 'end':
+                        xStart = pointList[length - 2][0];
+                        xEnd = pointList[length - 1][0];
+                        yStart = pointList[length - 2][1];
+                        yEnd = pointList[length - 1][1];
+                        break;
+                }
+            }
+            else {
+                xStart = style.xStart || 0;
+                xEnd = style.xEnd || 0;
+                yStart = style.yStart || 0;
+                yEnd = style.yEnd || 0;
+            }
+
+            switch (textPosition) {
+                case 'start':
+                    al = xStart < xEnd ? 'end' : 'start';
+                    bl = yStart < yEnd ? 'bottom' : 'top';
+                    tx = xStart;
+                    ty = yStart;
+                    break;
+                case 'end':
+                    al = xStart < xEnd ? 'start' : 'end';
+                    bl = yStart < yEnd ? 'top' : 'bottom';
+                    tx = xEnd;
+                    ty = yEnd;
+                    break;
+            }
+            dd -= 4;
+            if (xStart != xEnd) {
+                tx -= (al == 'end' ? dd : -dd);
+            } 
+            else {
+                al = 'center';
+            }
+
+            if (yStart != yEnd) {
+                ty -= (bl == 'bottom' ? dd : -dd);
+            } 
+            else {
+                bl = 'middle';
+            }
+            break;
+        case 'specific':
+            tx = style.textX || 0;
+            ty = style.textY || 0;
+            al = 'start';
+            bl = 'middle';
+            break;
+    }
+
+    if (tx != null && ty != null) {
+        _fillText(
+            ctx,
+            style.text, 
+            tx, ty, 
+            style.textFont,
+            style.textAlign || al,
+            style.textBaseline || bl
+        );
+    }
+};
+
+
+
+// Circle.js 的getRect
+/**
+ * 返回矩形区域，用于局部刷新和文字定位
+ * @param {Object} style
+ */
+getRect : function (style) {
+    if (style.__rect) {
+        return style.__rect;
+    }
+    
+    var lineWidth;
+    if (style.brushType == 'stroke' || style.brushType == 'fill') {
+        lineWidth = style.lineWidth || 1;
+    }
+    else {
+        lineWidth = 0;
+    }
+    style.__rect = {
+        x : Math.round(style.x - style.r - lineWidth / 2),
+        y : Math.round(style.y - style.r - lineWidth / 2),
+        width : style.r * 2 + lineWidth,
+        height : style.r * 2 + lineWidth
+    };
+    
+    return style.__rect;
+}
+};
+
+</span></pre>
+</div>		
+			<ul>
+				<li>关于textPosition的具体设置，请移步API</li>
+				<li>getRect还是一个模板方法，用来获取图形所在的矩形区域。用Circle说明，通过一系列的计算，得到圆形左上角的xy坐标，获得原型的矩形宽高，返回。其中，__rect是缓存作用</li>
+				<li>其中，al表示的是canvasAPI中的context.textAlign，bl指的是textBaseLine，tx,ty是文字的基准坐标，请看 http://www.w3school.com.cn/tags/canvas_textalign.asp 和   http://www.w3school.com.cn/tags/canvas_textbaseline.asp</li>
+				<li>如果textPosition为inside,left,right,top,bottom（分别表示在图形的中央，左边，右边，上边，下边），根据rect的信息进行tx/ty/al/bl的赋值</li>
+				<li>如果是start或者end，只有直线和折线配置这两个，同理，根据rect的信息分情况进行tx/ty/al/bl的设置</li>
+				<li>
+					最后，拿到了tx/ty/al/bl/font/text，调用真正的画图方法_fillText
+<div class="cnblogs_code">
+<pre><span style="color: #000000;">
+function _fillText(ctx, text, x, y, textFont, textAlign, textBaseline) {
+    if (textFont) {
+        ctx.font = textFont;
+    }
+    ctx.textAlign = textAlign;
+    ctx.textBaseline = textBaseline;
+    var rect = _getTextRect(
+        text, x, y, textFont, textAlign, textBaseline
+    );
+    
+    text = (text + '').split('\n');
+    var lineHeight = require('../tool/area').getTextHeight('国', textFont);
+    
+    switch (textBaseline) {
+        case 'top':
+            y = rect.y;
+            break;
+        case 'bottom':
+            y = rect.y + lineHeight;
+            break;
+        default:
+            y = rect.y + lineHeight / 2;
+    }
+    
+    for (var i = 0, l = text.length; i < l; i++) {
+        ctx.fillText(text[i], x, y);
+        y += lineHeight;
+    }
+}
+/**
+ * 返回矩形区域，用于局部刷新和文字定位
+ * 
+ * @inner
+ * @param {Object} style
+ */
+function _getTextRect(text, x, y, textFont, textAlign, textBaseline) {
+    var area = require('../tool/area');
+    var width = area.getTextWidth(text, textFont);
+    var lineHeight = area.getTextHeight('国', textFont);
+    
+    text = (text + '').split('\n');
+    
+    switch (textAlign) {
+        case 'end':
+        case 'right':
+            x -= width;
+            break;
+        case 'center':
+            x -= (width / 2);
+            break;
+    }
+
+    switch (textBaseline) {
+        case 'top':
+            break;
+        case 'bottom':
+            y -= lineHeight * text.length;
+            break;
+        default:
+            y -= lineHeight * text.length / 2;
+    }
+
+    return {
+        x : x,
+        y : y,
+        width : width,
+        height : lineHeight * text.length
+    };
+}
+
+//以下是tool/area.js中方法
+
+/**
+ * 测算多行文本高度
+ * @param {Object} text
+ * @param {Object} textFont
+ */
+function getTextHeight(text, textFont) {
+    var key = text+':'+textFont;
+    if (_textHeightCache[key]) {
+        return _textHeightCache[key];
+    }
+    
+    _ctx = _ctx || util.getContext();
+
+    _ctx.save();
+    if (textFont) {
+        _ctx.font = textFont;
+    }
+    
+    text = (text + '').split('\n');
+    //比较粗暴
+    var height = (_ctx.measureText('国').width + 2) * text.length;
+
+    _ctx.restore();
+
+    _textHeightCache[key] = height;
+    if (++_textHeightCacheCounter > TEXT_CACHE_MAX) {
+        // 内存释放
+        _textHeightCacheCounter = 0;
+        _textHeightCache = {};
+    }
+    return height;
+}
+/**
+ * 测算多行文本宽度
+ * @param {Object} text
+ * @param {Object} textFont
+ */
+function getTextWidth(text, textFont) {
+    var key = text+':'+textFont;
+    if (_textWidthCache[key]) {
+        return _textWidthCache[key];
+    }
+    _ctx = _ctx || util.getContext();
+    _ctx.save();
+
+    if (textFont) {
+        _ctx.font = textFont;
+    }
+    
+    text = (text + '').split('\n');
+    var width = 0;
+    for (var i = 0, l = text.length; i < l; i++) {
+        width =  Math.max(
+            _ctx.measureText(text[i]).width,
+            width
+        );
+    }
+    _ctx.restore();
+
+    _textWidthCache[key] = width;
+    if (++_textWidthCacheCounter > TEXT_CACHE_MAX) {
+        // 内存释放
+        _textWidthCacheCounter = 0;
+        _textWidthCache = {};
+    }
+    
+    return width;
+}
+</span></pre>
+</div>
+					<ul>
+						<li>先设置context的textAlign和textBaseLine</li>
+						<li>关于area.getTextHeight和area.getTextWidth，主要是用了canvas的原生measureText方法，还有一个缓存技巧。关于measureText，请看 http://www.w3school.com.cn/tags/canvas_measuretext.asp</li>
+						<li>_getTextRect获取了需要画的问题的热点区域，仍旧返回的是x/y/width/height</li>
+						<li>在_fillText，获取到热点区域后，对行高做一些特殊处理之后，调用fillText进行真真正的绘制了。</li>
+					</ul>
+				</li>
+			</ul>
+		</li>
+		<li>至此，brush方法分析完毕。</li>
+	</ul>
+	</p>
+	<h3>总结</h3>
+	<p>
+		写这些东西，真是很费时间，关于变形的设置，和其他图形的详细实现，等机缘到了，再续吧。下篇将继续Painter的分析。
+	</p>
+</body>
+</html>

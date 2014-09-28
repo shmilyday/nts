@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+<meta charset="UTF-8">
+<title></title>
+</head>
+<body>
+	<script type="text/javascript">
+	
+		//关于跨域
+		
+		// http://javatgo.iteye.com/blog/858721
+		// http://javatgo.iteye.com/blog/858725
+		// http://javatgo.iteye.com/blog/858724
+		// http://javatgo.iteye.com/blog/858727
+		// https://developer.mozilla.org/en-US/docs/Web/HTTP/Access_control_CORS
+		// http://zjuhpp.com/cross-domain-methods.html
+		// http://www.cnblogs.com/rainman/archive/2011/02/20/1959325.html
+		var xhr = new XMLHttpRequest();
+
+		xhr.open('get', 'http://127.0.0.1/crossDomainTest.php');
+
+		xhr.setRequestHeader('x-forward-url', '1.2.3.4/abc.php');
+		xhr.setRequestHeader('customHeaderName', 'customHeaderValue');
+
+		xhr.onreadystatechange = function() {
+			if (xhr.readyState === 4 && xhr.status === 200) {
+				alert('loaded');
+			}
+		};
+
+		xhr.send();
+	</script>
+</body>
+</html>

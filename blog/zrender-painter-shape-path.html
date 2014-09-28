@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+<meta charset="UTF-8">
+<title>ZRender源码分析5：Shape对象详解之路径</title>
+<link rel="styleSheet" href="../bootstrap/css/bootstrap.css">
+</head>
+<body>
+	<div class="container">
+	<h2>开始</h2>
+	<p>
+		说到这里，就不得不提SVG的路径操作了，因为ZRender完全的模拟了SVG原生的path元素的用法，很是强大。
+		关于SVG的Path，请看这里： <a href="https://developer.mozilla.org/en/docs/Web/SVG/Tutorial/Paths" target="_blank">Path (英文版)</a> 或者 <a href="http://xbingoz.com/320.html" target="_blank">【MDN】SVG教程(5) 路径 [译] （中文版）</a>，
+		很明显的是canvas中的路径没有SVG的用着舒服，那到底ZRender是如何实现的呢，让我给你娓娓道来（不过要想继续进行下去，上面的SVG的PATH必须了解。）。
+	</p>
+	<h2>示例</h2>
+	<p>
+		打开API，<a href="http://ecomfe.github.io/zrender/doc/doc.html#shape.path" target="_blank">shape.path</a>，可以看到，path的配置有MLHVCSQTZ等字母组成的字符串，svg的path也支持小写，也有一个A命令，难道ZRender没有实现？
+		错，实现了，只是在API上没有写明而已，支持大小写，支持A（圆弧）命令！为了证明我所说，来个示例：
+<div class="cnblogs_code">
+<pre><span style="color: #000000;">
+require(
+[
+    '../src/zrender', '../src/shape/Path'
+], function( zrender, PathShape )
+{
+
+	var box = document.getElementById('box');
+	var zr = zrender.init(box);
+
+	zr.addShape(new PathShape(
+	{
+		style:
+		{
+			x: 0,
+			y: 0,
+			path: 'M80 80 A 45 45, 0, 0, 0, 125 125 L 125 80 Z',
+			color: '#F60',
+			textPosition: 'inside',
+			textColor: 'red',
+			strokeColor: 'black'
+		},
+		draggable: true
+	}));
+	
+	zr.addShape(new PathShape(
+	{
+		style:
+		{
+			x: 0,
+			y: 0,
+			path: 'M230 80 A 45 45, 0, 1, 0, 275 125 L 275 80 Z',
+			color: '#F60',
+			textPosition: 'inside',
+			textColor: 'red',
+			strokeColor: 'black'
+		},
+		draggable: true
+	}));
+
+	zr.render();
+});
+
+</span></pre>
+</div>
+		得到如下结果：
+		<img src="svg-path.png" style="display:block;">
+		再用SVG来一个相同配置的：
+<div class="cnblogs_code">
+<pre><span style="color: #000000;">
+<svg version="1.1" baseProfile="full" xmlns="http://www.w3.org/2000/svg">
+	<path d="M80 80
+		A 45 45, 0, 0, 0, 125 125
+		L 125 80 Z" fill="#F60"/>
+	<path d="M230 80
+		A 45 45, 0, 1, 0, 275 125
+		L 275 80 Z" fill="#F60"/>
+</svg>
+</span></pre>
+</div>
+	好吧，得到的结果一模一样，我就不贴图了。不多说了，这就是移植，我喜欢。
+	</p>
+	<h2>_parsePathData</h2>
+	<p>
+		打开zrender/shape/Path，buildPath先调用的就是_parsePathData，作用为：解析path字符串为数组命令，也就是个解析器嘛。
+<div class="cnblogs_code">
+<pre><span style="color: #000000;">
+ _parsePathData : function(data) {
+     if (!data) {
+         return [];
+     }
+
+     // command string
+     var cs = data;
+
+     // command chars
+     var cc = [
+         'm', 'M', 'l', 'L', 'v', 'V', 'h', 'H', 'z', 'Z',
+         'c', 'C', 'q', 'Q', 't', 'T', 's', 'S', 'a', 'A'
+     ];
+     
+     cs = cs.replace(/-/g, ' -');// M 100 100 L 100 200 L 100-200 Z -> M 100 100 L 100 200 L 100 -200 Z
+     cs = cs.replace(/  /g, ' ');// M 100 100 L 100 200 L 100 -200 -> M 100 100 L 100 200 L 100  -200 -> M 100 100 L 100 200 L 100 -200
+     cs = cs.replace(/ /g, ',');// M 100 100 L 100 200 L 100 -200 -> M,100,100,L,100,200,L,100,-200
+     cs = cs.replace(/,,/g, ',');//如果出现两个逗号，换成一个逗号 -> M,100,100,L,100,200,L,100,-200
+     
+     //cs = cs.replace(/-/g, ' -').replace(/  /g, ' ').replace(/ /g, ',').replace(/,,/g, ','); 这样写，会不会很帅气,(-
+     
+
+     var n;
+     // create pipes so that we can split the data
+     for (n = 0; n < cc.length; n++) {
+         cs = cs.replace(new RegExp(cc[n], 'g'), '|' + cc[n]);
+     }
+     
+     // |M,100,100,|L,100,200,|L,100,-200
+
+     // create array
+     var arr = cs.split('|'); // ['','M,100,100,','L,100,200,','L,100,-200']
+     var ca = [];
+     // init context point
+     var cpx = 0; //cpx和cpy是循环里的全局都在使用，小写命令是累计计算，大写命令是复制计算。
+     var cpy = 0;
+     for (n = 1; n < arr.length; n++) { // 从1开始，因为第一个元素肯定为空
+         var str = arr[n]; // M,100,100,
+         var c = str.charAt(0); // M
+         str = str.slice(1); //,100,100,
+         str = str.replace(new RegExp('e,-', 'g'), 'e-');
+
+         var p = str.split(',');// ['','100','100','']
+         if (p.length > 0 && p[0] === '') {
+             p.shift();
+         }
+         // ['100','100','']
+
+         for (var i = 0; i < p.length; i++) {
+             p[i] = parseFloat(p[i]);
+         }
+         
+         // [100,100,NaN]
+         
+         while (p.length > 0) {
+             if (isNaN(p[0])) {
+                 break;
+             }
+             var cmd = null;
+             var points = [];
+
+             var ctlPtx;
+             var ctlPty;
+             var prevCmd;
+
+             var rx;
+             var ry;
+             var psi;
+             var fa;
+             var fs;
+
+             var x1 = cpx;
+             var y1 = cpy;
+
+             // convert l, H, h, V, and v to L
+             switch (c) {
+             case 'l':
+                 cpx += p.shift();
+                 cpy += p.shift();
+                 cmd = 'L';
+                 points.push(cpx, cpy);
+                 break;
+             case 'L':
+                 cpx = p.shift();
+                 cpy = p.shift();
+                 points.push(cpx, cpy);
+                 break;
+             //在l的时候，是直接相加的，而L的时候，是直接赋值的 ，这就说明大小写是不一样的   
+             // L 表示lineTo
+             case 'm':
+                 cpx += p.shift();
+                 cpy += p.shift();
+                 cmd = 'M';
+                 points.push(cpx, cpy);
+                 c = 'l';
+                 break;
+             case 'M':
+                 cpx = p.shift();
+                 cpy = p.shift();
+                 cmd = 'M';
+                 points.push(cpx, cpy);
+                 c = 'L';
+                 break;
+// M 表示moveTo
+             case 'h':
+                 cpx += p.shift();
+                 cmd = 'L';
+                 points.push(cpx, cpy);
+                 break;
+             case 'H':
+                 cpx = p.shift();
+                 cmd = 'L';
+                 points.push(cpx, cpy);
+                 break;
+             // H 表示水平lineTo，只改变X值
+             case 'v':
+                 cpy += p.shift();
+                 cmd = 'L';
+                 points.push(cpx, cpy);
+                 break;
+             case 'V':
+                 cpy = p.shift();
+                 cmd = 'L';
+                 points.push(cpx, cpy);
+                 break;
+             // H 表示垂直lineTo，只改变Y值
+             case 'C':
+                 points.push(p.shift(), p.shift(), p.shift(), p.shift());
+                 cpx = p.shift();
+                 cpy = p.shift();
+                 points.push(cpx, cpy);
+                 break;
+             case 'c':
+                 points.push(
+                     cpx + p.shift(), cpy + p.shift(),
+                     cpx + p.shift(), cpy + p.shift()
+                 );
+                 cpx += p.shift();
+                 cpy += p.shift();
+                 cmd = 'C';
+                 points.push(cpx, cpy);
+                 break;
+             // C表示二次贝塞尔曲线
+             case 'S':
+                 ctlPtx = cpx;
+                 ctlPty = cpy;
+                 prevCmd = ca[ca.length - 1];
+                 if (prevCmd.command === 'C') {
+                     ctlPtx = cpx + (cpx - prevCmd.points[2]);
+                     ctlPty = cpy + (cpy - prevCmd.points[3]);
+                 }
+                 points.push(ctlPtx, ctlPty, p.shift(), p.shift());
+                 cpx = p.shift();
+                 cpy = p.shift();
+                 cmd = 'C';
+                 points.push(cpx, cpy);
+                 break;
+             case 's':
+                 ctlPtx = cpx, ctlPty = cpy;
+                 prevCmd = ca[ca.length - 1];
+                 if (prevCmd.command === 'C') {
+                     ctlPtx = cpx + (cpx - prevCmd.points[2]);
+                     ctlPty = cpy + (cpy - prevCmd.points[3]);
+                 }
+                 points.push(
+                     ctlPtx, ctlPty,
+                     cpx + p.shift(), cpy + p.shift()
+                 );
+                 cpx += p.shift();
+                 cpy += p.shift();
+                 cmd = 'C';
+                 points.push(cpx, cpy);
+                 break;
+             // C表示光滑二次贝塞尔曲线
+             case 'Q':
+                 points.push(p.shift(), p.shift());
+                 cpx = p.shift();
+                 cpy = p.shift();
+                 points.push(cpx, cpy);
+                 break;
+             case 'q':
+                 points.push(cpx + p.shift(), cpy + p.shift());
+                 cpx += p.shift();
+                 cpy += p.shift();
+                 cmd = 'Q';
+                 points.push(cpx, cpy);
+                 break;
+             // Q表示三次贝塞尔曲线
+             case 'T':
+                 ctlPtx = cpx, ctlPty = cpy;
+                 prevCmd = ca[ca.length - 1];
+                 if (prevCmd.command === 'Q') {
+                     ctlPtx = cpx + (cpx - prevCmd.points[0]);
+                     ctlPty = cpy + (cpy - prevCmd.points[1]);
+                 }
+                 cpx = p.shift();
+                 cpy = p.shift();
+                 cmd = 'Q';
+                 points.push(ctlPtx, ctlPty, cpx, cpy);
+                 break;
+             case 't':
+                 ctlPtx = cpx, ctlPty = cpy;
+                 prevCmd = ca[ca.length - 1];
+                 if (prevCmd.command === 'Q') {
+                     ctlPtx = cpx + (cpx - prevCmd.points[0]);
+                     ctlPty = cpy + (cpy - prevCmd.points[1]);
+                 }
+                 cpx += p.shift();
+                 cpy += p.shift();
+                 cmd = 'Q';
+                 points.push(ctlPtx, ctlPty, cpx, cpy);
+                 break;
+             // Q表示光滑三次贝塞尔曲线
+             case 'A':
+                 rx = p.shift(); //椭圆的x轴半径
+                 ry = p.shift(); //椭圆的y轴半径
+                 psi = p.shift();//椭圆的旋转角度
+                 fa = p.shift();//角度大小  0表示小角度，1表示大弧度
+                 fs = p.shift();//弧线方向  0表示从起点到终点沿逆时针画弧，1表示从起点到终点沿顺时针画弧
+
+                 x1 = cpx, y1 = cpy; //开始的点
+                 cpx = p.shift(), cpy = p.shift(); //结束的点
+                 cmd = 'A';
+                 points = this._convertPoint(
+                     x1, y1, cpx, cpy, fa, fs, rx, ry, psi
+                 );
+                 break;
+             case 'a':
+                 rx = p.shift();
+                 ry = p.shift();
+                 psi = p.shift();
+                 fa = p.shift();
+                 fs = p.shift();
+
+                 x1 = cpx, y1 = cpy;
+                 cpx += p.shift();
+                 cpy += p.shift();
+                 cmd = 'A';
+                 points = this._convertPoint(
+                     x1, y1, cpx, cpy, fa, fs, rx, ry, psi
+                 );
+                 break;
+// A是啥玩意？
+             }
+
+             ca.push({
+                 command : cmd || c,
+                 points : points
+             });
+         }
+         
+         //如果是z，z不去分大小写，直接push进入，points为空数组
+         if (c === 'z' || c === 'Z') {
+             ca.push({
+                 command : 'z',
+                 points : []
+             });
+         }
+     }
+
+     return ca;
+ }
+</span></pre>
+</div>
+		<ul>
+			<li>如果没有data，直接返回空数组</li>
+			<li>将传入的data赋值给cs，将cs进行一系列的replace（将-换成 -，将两个空格换成一个空格，将一个空格换成逗号，将两个逗号换成一个逗号），这些，都是为了兼容SVG的规法和各种不规范的写法</li>
+			<li>将cs用竖线加命令字符分隔开，便于下一步进行再次分隔</li>
+			<li>再用竖线将字符串变成数组，声明ca（最后所返回的值），声明cpx和cpy（绘制路径的起点，相对于下面的循环，是一个全局性质的变量）</li>
+			<li>遍历arr，其中c是命令符，经过处理，最后的点坐标，被赋值到p变量上</li>
+			<li>开始while循环，真正的往ca中push值，进入switch，如果是命令是大写的cpx直接被赋值为p中的点，如果是小写的，会在原来的cpx和cpy的基础上进行累加。（具体用法可以参见那篇SVG的文章）</li>
+			<li>这些命令的意思在注释中已经写明，唯一需要说的是A（圆弧），这个比较复杂，需要细细体会，我就不分析了，不过也可以看这里，如果作者有回应的话。 https://github.com/ecomfe/zrender/issues/98</li>
+			<li>
+				最后返回的ca是一个数组，看下图：
+				<img src="ca.png" style="display:block;">
+			</li>
+		</ul>
+	</p>
+	<h2>创建路径 buildPath</h2>
+	<p>
+<div class="cnblogs_code">
+<pre><span style="color: #000000;">
+buildPath : function(ctx, style) {
+    var path = style.path;
+
+    var pathArray = this.pathArray || this._parsePathData(path);
+
+    // 平移坐标
+    var x = style.x || 0;
+    var y = style.y || 0;
+
+    var p;
+    // 记录边界点，用于判断inside
+    var pointList = style.pointList = [];
+    var singlePointList = [];
+    for (var i = 0, l = pathArray.length; i < l; i++) {
+        if (pathArray[i].command.toUpperCase() == 'M') { // 如果是M，说明又画了一个新的区域，就把原来的singlePointList塞入到最终结果中，再把singlePointList清空
+            singlePointList.length > 0 
+            && pointList.push(singlePointList);
+            singlePointList = [];
+        }
+        p = pathArray[i].points;
+        for (var j = 0, k = p.length; j < k; j += 2) { //把所有的point点塞入singlePointList
+            singlePointList.push([p[j] + x, p[j+1] + y]);
+        }
+    }
+    singlePointList.length > 0 && pointList.push(singlePointList); //如果存在点，塞入最终结果里
+    
+    var c;
+    for (var i = 0, l = pathArray.length; i < l; i++) {
+        c = pathArray[i].command;
+        p = pathArray[i].points;
+        // 平移变换
+        for (var j = 0, k = p.length; j < k; j++) { //style.x和style.y是一个参考点
+            if (j % 2 === 0) {
+                p[j] += x;
+            } else {
+                p[j] += y;
+            }
+        }
+        switch (c) {
+            case 'L':
+                ctx.lineTo(p[0], p[1]);
+                break;
+            case 'M':
+                ctx.moveTo(p[0], p[1]);
+                break;
+            case 'C':
+                ctx.bezierCurveTo(p[0], p[1], p[2], p[3], p[4], p[5]);
+                break;
+            case 'Q':
+                ctx.quadraticCurveTo(p[0], p[1], p[2], p[3]);
+                break;
+            // 这几个做法就比较明显了，调用了原生CanvasAPI，但是A呢，对了，在SVG中，是弧形，
+            // 文档中也不写，作者好低调，赞！
+            case 'A':
+                var cx = p[0];
+                var cy = p[1];
+                var rx = p[2];
+                var ry = p[3];
+                var theta = p[4];
+                var dTheta = p[5];
+                var psi = p[6];
+                var fs = p[7];
+                var r = (rx > ry) ? rx : ry;
+                var scaleX = (rx > ry) ? 1 : rx / ry;
+                var scaleY = (rx > ry) ? ry / rx : 1;
+
+                ctx.translate(cx, cy);
+                ctx.rotate(psi);
+                ctx.scale(scaleX, scaleY);
+                ctx.arc(0, 0, r, theta, theta + dTheta, 1 - fs);
+                ctx.scale(1 / scaleX, 1 / scaleY);
+                ctx.rotate(-psi);
+                ctx.translate(-cx, -cy);
+                break;
+            case 'z':
+                ctx.closePath();
+                break;
+        }
+    }
+
+    return;
+},
+</span></pre>
+</div>
+		<ul>
+			<li>xy是一个绘制路径的参考点，如果用户没有指定，这里默认为0 0</li>
+			<li>记录边界点，用于判断inside，这里对M的判断主要是处理一个命令画多个区域的问题。而判断inside的作用主要是在Base类里drawText的时候用到</li>
+			<li>开始遍历pathArray（即上面说的ca），style.x/style.y是一个参考点，所有的坐标都会加上这个参考点，即为平移变换。</li>
+			<li>进入switch进行真正的canvas原生API绘制路径，最后碰到z，进行closePath</li>
+			<li>A我就不说了，没找到这个算法的相关资料，欢迎大家指导。</li>
+		</ul>
+	</p>
+	<h2>热区 getRect</h2>
+	<p>
+<div class="cnblogs_code">
+<pre><span style="color: #000000;">
+getRect : function(style) {
+    if (style.__rect) {
+        return style.__rect;
+    }
+    
+    var lineWidth;
+    if (style.brushType == 'stroke' || style.brushType == 'fill') {
+        lineWidth = style.lineWidth || 1;
+    }
+    else {
+        lineWidth = 0;
+    }
+
+    var minX = Number.MAX_VALUE;
+    var maxX = Number.MIN_VALUE;
+
+    var minY = Number.MAX_VALUE;
+    var maxY = Number.MIN_VALUE;
+
+    // 平移坐标
+    var x = style.x || 0;
+    var y = style.y || 0;
+
+    var pathArray = this.pathArray || this._parsePathData(style.path);
+    for (var i = 0; i < pathArray.length; i++) {
+        var p = pathArray[i].points;
+
+        for (var j = 0; j < p.length; j++) {
+            if (j % 2 === 0) { // 0,2,4,6,8....为x值
+                if (p[j] + x < minX) {
+                    minX = p[j] + x;
+                }
+                if (p[j] + x > maxX) {
+                    maxX = p[j] + x;
+                }
+            } 
+            else { // 1,3,5,7,9...为y值
+                if (p[j] + y < minY) {
+                    minY = p[j] + y;
+                }
+                if (p[j] + y > maxY) {
+                    maxY = p[j] + y;
+                }
+            }
+        }
+    }
+
+    var rect;
+    if (minX === Number.MAX_VALUE
+        || maxX === Number.MIN_VALUE
+        || minY === Number.MAX_VALUE
+        || maxY === Number.MIN_VALUE
+    ) {
+        rect = {
+            x : 0,
+            y : 0,
+            width : 0,
+            height : 0
+        };
+    }
+    else {
+        rect = {
+            x : Math.round(minX - lineWidth / 2),
+            y : Math.round(minY - lineWidth / 2),
+            width : maxX - minX + lineWidth,
+            height : maxY - minY + lineWidth
+        };
+    }
+    style.__rect = rect;
+    return rect;
+}
+</span></pre>
+</div>
+		<ul>
+			<li>关于Number.MAX_VALUE和Number.MIN_VALUE，请看这里：<a href="http://www.w3school.com.cn/jsref/jsref_obj_number.asp" target="_blank">JavaScript Number 对象</a></li>
+			<li>获得pathArray（即为上面说的ca），遍历之</li>
+			<li>加上参考点x/y后分别跟最大值最小值作比较，最后得出靠谱的minX,minY,maxX,maxY，木有什么惊喜</li>
+			<li>如果minX,minY,maxX,maxY原封未动，那就是pathArray出了问题（没有取到或者什么的），返回一个都是0的对象</li>
+			<li>如果正常返回x,y,width,height，关于lineWidth的问题，<a href="http://www.cnblogs.com/hhstuhacker/p/zrender-source-painter-shape.html" target="_blank">前一篇</a>有解释。</li>
+		</ul>
+	</p>
+	</div>
+</body>
+</html>

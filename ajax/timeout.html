@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+<meta charset="UTF-8">
+<title></title>
+</head>
+<body>
+	<script type="text/javascript">
+		// http://www.ruanyifeng.com/blog/2012/09/xmlhttprequest_level_2.html
+	
+		var xhr = new XMLHttpRequest();
+		xhr.open('get', '../server.js');
+		xhr.timeout = 1; // ms
+
+		xhr.onreadystatechange = function() {
+			if (xhr.readyState === 4 && xhr.status === 200) {
+
+				alert('loaded');
+			}
+		};
+
+		xhr.ontimeout = function(event) {
+			alert('timeout');
+		};
+
+		xhr.send();
+	</script>
+</body>
+</html>
