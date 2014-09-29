@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title></title>
+    <style>
+    	* {margin:0;padding:0;}
+    </style>
+    
+</head>
+<body>
+	<!-- 在IE6下无法定义小高度的容器，是因为有一个默认的行高。 -->
+    <div style="height:1px;background:red;overflow:hidden;"></div>
+    
+    <!-- 图片下方出现几像素的空白间隙 http://www.cnblogs.com/tangge/archive/2011/02/16/1955777.html -->
+    
+    <img src="../../bootstrap/images/backbone.png" style="background:blue;">
+    <div style="background:red;height:50px;"></div>
+    
+    <!-- IE6 下双边距问题 http://blog.csdn.net/speed_feng/article/details/8186839 -->
+    
+    <div style="height:300px;background:#eee;">
+    	<div style="height:50px;background:blue;width:200px;float:left;margin-left:10px;"></div>
+    </div>
+    
+</body>
+</html>
