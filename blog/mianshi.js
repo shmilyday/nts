@@ -34,6 +34,15 @@
 	CSS
 		收集Web前端 面试题 HTML+CSS部分 http://www.cnblogs.com/leejersey/archive/2012/11/01/2749352.html
 		CSS面试题——不断补充 http://bbs.miaov.com/forum.php?mod=viewthread&tid=976
+		background和font 缩写： http://blog.csdn.net/shenzhennba/article/details/7356095 font:italic normal bold 12px weiruanyahei; 
+		聚美优品答案：http://runfeel.iteye.com/blog/1873767
+		
+		flash最底层wmode="Opaque"
+		文字不换行： white-space:nowarp;
+		文字... : http://www.zhangxinxu.com/wordpress/2009/09/%E5%85%B3%E4%BA%8E%E6%96%87%E5%AD%97%E5%86%85%E5%AE%B9%E6%BA%A2%E5%87%BA%E7%94%A8%E7%82%B9%E7%82%B9%E7%82%B9-%E7%9C%81%E7%95%A5%E5%8F%B7%E8%A1%A8%E7%A4%BA/
+				  http://blog.csdn.net/dannywj1371/article/details/8127778
+		答案：http://note.sdo.com/u/1477678673/NoteContent/o4Vph~k3YRb0LX0PQ001u8
+		css的margin重叠问题： http://www.zhangxinxu.com/study/200908/margin-overlap.html
 		
 	兼容性
 		IE6-IE9兼容性问题列表及解决办法总结 http://www.cnblogs.com/liuzhendong/archive/2012/04/09/2438502.html
