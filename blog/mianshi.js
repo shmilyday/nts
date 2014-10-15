@@ -38,6 +38,9 @@
 	兼容性
 		IE6-IE9兼容性问题列表及解决办法总结 http://www.cnblogs.com/liuzhendong/archive/2012/04/09/2438502.html
 		IE8的兼容渲染模式X-UA-Compatible http://www.nowamagic.net/librarys/veda/detail/925
+		
+	综合
+		http://www.cnblogs.com/Hcjer/p/4014314.html
  * 
  */
 

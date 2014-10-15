@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>setTimeout 测试</title>
+</head>
+
+<body>
+	<script>
+		console.log(1);
+
+		setTimeout(function() {
+			console.log('timeout invoke');
+			console.timeEnd('timeout');
+		}, 16000);
+
+		console.log(2);
+		
+		console.time('hard');
+		console.time('timeout');
+		
+		for (var i = 0;i<2000000000;i++) {}
+		
+		console.timeEnd('hard');
+		
+		console.log(3);
+		
+		//http://www.phpweblog.net/rainman/archive/2009/01/05/6267.html
+		
+		var t = true;  
+		setTimeout(function(){ t = false; }, 1000);  
+		while(t){ }  
+		alert('end'); 
+		
+	</script>
+</body>
+
+</html>

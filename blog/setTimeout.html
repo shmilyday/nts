@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+<meta charset="UTF-8">
+<title>setTimeout的若干坑</title>
+<link rel="styleSheet" href="../bootstrap/css/bootstrap.css">
+</head>
+<body>
+	<div class="container">
+		<h2>第一坑：作用域</h2>
+		<p>
+			首先，有一个关于this的面试题，是这样的：
+<div class="cnblogs_code">
+<pre><span style="color: #000000;">
+var fullname = 'John Doe';
+var obj = {  
+    fullname: 'Colin Ihrig',   
+    prop: {      
+        fullname: 'Aurelio De Rosa',      
+        getFullname: function() {         
+            return this.fullname;      
+        }   
+    }
+};
+console.log(obj.prop.getFullname()); 
+var test = obj.prop.getFullname; 
+console.log(test());
+</span></pre>
+</div>
+			主要考察的是this的指向，很明显，this是根据上下文的执行环境决定的，<code>obj.prop.getFullname()</code>的上下文是obj.prop，而执行<code>var test = obj.prop.getFullname</code>，实际上是<code>window.test = obj.prop.getFullname;</code>
+			所以<code>window.test()</code>的this指向的是window，该题的结果为：先打印出Aurelio De Rosa，然后再打印出John Doe。但是，但问题还没有结束，变个形：
+<div class="cnblogs_code">
+<pre><span style="color: #000000;">
+var fullname = 'John Doe';
+var obj = {  
+    fullname: 'Colin Ihrig',   
+    prop: {      
+        fullname: 'Aurelio De Rosa',      
+        getFullname: function() {   
+			setTimeout(function () {
+				console.log(this.fullname);
+			},100);              
+            return this.fullname;      
+        }   
+    }
+};
+console.log(obj.prop.getFullname()); 
+var test = obj.prop.getFullname; 
+console.log(test());
+</span></pre>
+</div>	
+			那现在呢，在setTimeout中会弹出什么？当时确实有那么几毫秒难住了我，一想，这个setTimeout，不就相当于window.setTimeout嘛，所以，setTimeout中的this依旧指向window，打印的结果为：Colin Ihrig。
+		</p>
+		
+		<h2>第二坑：执行顺序</h2>
+		<p>
+			还是一个面试题，如下：
+<div class="cnblogs_code">
+<pre><span style="color: #000000;">
+setTimeout(function(){ t = false; }, 1000);  
+while(true){}  
+alert('end'); 
+</span></pre>
+</div>
+			问题来了：alert是否能够弹出？为什么？问题的答案是：不能弹出来，因为JS的单线程的，永远的单线程。在while(true)的时候陷入了死循环，就再先出不来了。关于JS的执行机制，请看这里：<a href="http://www.ruanyifeng.com/blog/2014/10/event-loop.html" target="_blank">JavaScript 运行机制详解：再谈Event Loop</a>这篇文章，已经很详细了，我就不多说了。
+		</p>
+		<h2>疑惑：时间点问题</h2>
+		<p>
+			然后，同事问了我个比较诡异的问题，如下：
+<div class="cnblogs_code">
+<pre><span style="color: #000000;">
+console.log(1);
+
+setTimeout(function() {
+	console.log('timeout invoke');
+	console.timeEnd('timeout');
+}, 2000);
+
+console.log(2);
+
+console.time('hard');
+console.time('timeout');
+
+for (var i = 0;i<2000000000;i++) {}
+
+console.timeEnd('hard');
+
+console.log(3);
+</span></pre>
+</div>
+			在chrome下，time的标志点hard的大概时间的13秒左右，那么问题来了，setTimeout的第二个参数若为2000（2秒），timeout这个时间为多少？如果为16000（16秒），时间为多少？
+			经过测试发现，如果这个setTimeout的时间设置为小于13秒，setTimeout会在console.log(3)后立即执行（与hard标志点间隔特别小），如果大于13秒，就在console.log(3)后的t-13秒后触发。
+			这就让我们很是疑惑，疑惑的点在于在浏览器内部。
+			
+			<ul>
+				<li>是什么时候开始进行setTimeout的时间打点呢？</li>
+				<li>JS是单线程的，是哪个线程打的点呢？</li>
+			</ul>
+			
+			而经过测试发现，是在执行到setTimeout这句话的时候，
+			就已经打了点，如果回头执行队列的时间大于setTimeout设置的时间，就再等到了那个时间在触发setTimeout的回调，
+			如果小于setTimeout设置的时间，就立即执行（实际上已经延时太多了，这就是证明setTimeout不准的铁证，其实就算没有这种影响，也是不准的）。
+			具体可以参考这篇 <a href="http://www.phpweblog.net/rainman/archive/2009/01/05/6267.html" target="_blank">JavaScript的单线程性质以及定时器的工作原理</a><br>
+			但是第二个问题呢？我是这么想的：JS的单线程的，但是浏览器不是啊，所以是浏览器的另外一个线程负责的打点，如果您有不同的想法，请反馈给我吧，不胜感激。
+		</p>
+		
+		<h2>最后</h2>
+		<p>最近在研究一些原生JS的基础以及深入，发现真是路漫漫其修远兮，为自己加油！</p>
+		
+	</div>
+</body>
+</html>
