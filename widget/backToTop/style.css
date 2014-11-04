@@ -1,0 +1,17 @@
+* {
+    margin: 0;
+    padding: 0;
+}
+
+.top {
+    height:30px;
+    width:90px;
+    background: #1c1e20;
+    display: block;
+    text-align: center;
+    line-height: 30px;
+    font-size:12px;
+    text-decoration: none;
+    cursor: pointer;
+    color:#FFFFFF
+}

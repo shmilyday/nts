@@ -30,7 +30,7 @@ var require, define;
             // and: http://www.cnblogs.com/snandy/archive/2011/04/29/2032376.html
             // and: http://www.cnblogs.com/chyingp/archive/2012/11/15/scriptOnerrorNotSupportedInIE6to8.html
             // 这里的onerror是有问题的，也是无奈？
-            // 在IE 6 7 8 Opera中，是不会触发传入的on
+            // 在IE 6 7 8 Opera中，只有在超时的时候才会触发onerror，而支持error的浏览器是直接触发的
             script.onerror = function() { //在script标签上注册error事件，在其中，清楚timeout计时，执行传入的onerror
                 clearTimeout(tid);
                 onerror();
@@ -180,6 +180,21 @@ var require, define;
         updateNeed();
     };
 
+    /**
+     * 这个API没有公开
+     * require.responseMap({
+     *  res:{
+     *      moduleAId:{
+     *          pkg:moduleAPkg
+     *      }
+     *  },
+     *  pkg:{
+     *      moduleAPkg:{
+     *          url:'moduleA.js'
+     *      }
+     *  }
+     * });
+     */
     require.resourceMap = function(obj) {
         var k, col;
 
