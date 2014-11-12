@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title>bootstrap mulit</title>
+    <link rel="stylesheet" href="../../../css/bootstrap.css"/>
+    <link rel="stylesheet" href="../dist/css/bootstrap-multiselect.css"/>
+</head>
+<body>
+
+<div class="container">
+
+
+    <select type="text" multiple class="form-control" id="mult">
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+        <option value="5">5</option>
+    </select>
+
+</div>
+
+<script src="../../../../jquery/jquery-1.11.1.js"></script>
+<script src="../../../js/bootstrap.js"></script>
+<script src="../dist/js/bootstrap-multiselect.js"></script>
+<script>
+
+    $(function () {
+        $('#mult').multiselect();
+    });
+
+</script>
+</body>
+</html>
