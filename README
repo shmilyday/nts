@@ -1,31 +1,22 @@
 这是一个扩充前端视野的项目，目前包括但不限于以下主题：
 
-1.Understore
+1.Understore 完成
 2.HTML5
-3.Bootstrap
-4.Sass
-    a.Sass
-    b.Compass
+3.Bootstrap 完成
+4.Sass 完成
 5.JQuery
     a.Animation
     b.Event->done
     c.Data->done
     d.Callback->done
     e.Defered->done
-
+6.SeaJS 完成
 接下来的计划：
 
 a.jQuery
-1、分析jQuery的Callback源代码->done
-2、分析jQuery的Defered源代码->done
 3、分析jQuery的Animation源代码
 4、分析jQuery的DOM
 5、开始jQuery的Ajax深入学习
-
 b.Backbone
-    underscore已完，为backbone打下了基础，就剩下开始了
-c.coffeescript
-d.requirejs
-e.zrender源码分析
-
-远程克隆提交 测试 test
+c.requirejs
+d.zrender源码分析 停止

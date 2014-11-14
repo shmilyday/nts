@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title>SeaJS</title>
+</head>
+<body>
+<script src="sea-debug.js"></script>
+<script>
+    seajs.config({
+        paths: {
+            twojs: '/js'
+        },
+        alias: {
+            "jquery": "../lib/jquery.js"
+        },
+        vars: {
+            somevar: 'abc'
+        },
+        maps:[
+                ['a','b'],
+                function () {}
+        ]
+    })
+    seajs.use('js/index2');
+</script>
+</body>
+</html>
