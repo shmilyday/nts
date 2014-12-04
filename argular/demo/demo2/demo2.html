@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html ng-app="myApp">
+<head lang="en">
+    <meta charset="UTF-8">
+    <title>AngularJS DEMO2</title>
+    <link rel="stylesheet" href="../../../bootstrap/css/bootstrap.css"/>
+    <script src="../../lib/angular-1.3.0.js"></script>
+</head>
+<body>
+<div class="container">
+    <div ng-controller="LoginController" style="width:40%;margin:20px 0 0 0;">
+        <form class="form-horizontal">
+            <div class="form-group">
+                <label for="" class="col-md-2">用户名</label>
+                <div class="col-md-10">
+                    <input type="text" placeholder="input your name" class="form-control" ng-model="userinfo.username"/>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="" class="col-md-2">密码</label>
+                <div class="col-md-10">
+                    <input type="password" class="form-control" placeholder="input your password" ng-model="userinfo.password">
+                </div>
+            </div>
+            <div class="form-group">
+                <button class="btn btn-success" type="button" ng-click="doLogin()">提交</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

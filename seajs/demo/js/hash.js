@@ -4,10 +4,15 @@
 
 define(function (require, exports, module) {
 
-    var uniqueNumber = 0;
+    var uniqueNumber = 0,
+        uniquePrefixNumber = 0;
 
     function uniqueId() {
         return 'hash_namespace_' + uniqueNumber++;
+    }
+
+    function uniquePrefix() {
+        return 'abcdefghijklmnopqrstuvwxyz'.split('')[uniquePrefixNumber++];
     }
 
     function getRawHash() {
@@ -43,11 +48,17 @@ define(function (require, exports, module) {
 
     var hashCache = {};
 
-    function Hash(namespace) {
+    function Hash(namespace, prefix) {
         this.namespace = namespace || uniqueId();
 
+        if (prefix === true) {
+            this.prefix = uniquePrefix() + '|';
+        } else {
+            this.prefix = prefix ? prefix + '|' : '';
+        }
+
         if (hashCache[namespace]) {
-            throw '该命名空间已经有注册，请换个';
+            throw 'namespace:' + namespace + ' is exist,please replace other one';
         }
 
         hashCache[this.namespace] = {
@@ -63,19 +74,34 @@ define(function (require, exports, module) {
                 hashKeyCache = hashCache[this.namespace].keys;
             if (typeof key === 'object') {
                 for (var ele in key) {
-                    if (key.hasOwnProperty(ele)) hashObj[ele] = key[ele];
+                    if (!key.hasOwnProperty(ele)) continue;
+                    var v = key[ele];
+                    ele = this.prefix + ele;
+                    hashObj[ele] = v;
+                    if (v == null) {
+                        delete hashObj[ele];
+                        continue;
+                    }
+
                     hashKeyCache.indexOf(ele) === -1 && hashKeyCache.push(ele);
                 }
             }
             else {
+                key = this.prefix + key;
                 hashObj[key] = value;
+                if (v == null) {
+                    delete hashObj[key];
+                }
                 hashKeyCache.indexOf(key) === -1 && hashKeyCache.push(key);
             }
             location.hash = encodeHash(hashObj);
         },
         get: function (key) {
-            if (hashCache[this.namespace].keys.indexOf(key) === -1) return;
             var hashObj = decodeHash(getRawHash());
+            if (key == null) return hashObj;
+            key = this.prefix + key;
+            if (hashCache[this.namespace].keys.indexOf(key) === -1) return;
+
             return hashObj[key];
         },
         on: function (option) {
@@ -89,6 +115,14 @@ define(function (require, exports, module) {
         },
         getNS: function () {
             return this.namespace;
+        },
+        remove: function () {
+            var ret = {};
+            var args = Array.prototype.slice.call(arguments, 0);
+            for (var i = 0; i < args.length; i++) {
+                ret[args[i]] = null;
+            }
+            this.set(ret);
         }
     };
 
@@ -103,6 +137,9 @@ define(function (require, exports, module) {
         return ret;
     }
 
+    // see: http://zhangyaochun.iteye.com/blog/1698191
+    // and: https://developer.mozilla.org/en-US/docs/Web/Events/hashchange
+    // and: http://www.ruanyifeng.com/blog/2011/03/url_hash.html
     window.onhashchange = function (hashChangeEvent) {
         var newHashObj = decodeHash(hashChangeEvent.newURL.split('#')[1] || ''),
             oldHashObj = decodeHash(hashChangeEvent.oldURL.split('#')[1] || ''),
@@ -126,5 +163,11 @@ define(function (require, exports, module) {
         }
     };
 
-    return Hash;
+    //return Hash;
+
+    function init(namespace, prefix) {
+        return new Hash(namespace, prefix);
+    }
+
+    return init;
 });

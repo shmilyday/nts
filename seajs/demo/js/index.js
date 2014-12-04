@@ -3,12 +3,10 @@
  */
 
 define(function (require, exports, module) {
-    var Hash = require('hash');
+    var hashinit = require('hash');
 
-    var ahash = new Hash();
-
-    var hash1 = new Hash('namespace1');
-    var hash2 = new Hash('namespace2');
+    var hash1 = hashinit('namespace1', 's');
+    var hash2 = hashinit('namespace2', 'f');
 
     hash1.on({
         fn: function (changeKey, handleObj) {
@@ -53,6 +51,7 @@ define(function (require, exports, module) {
 
     hash2.set({'aaaa': 'bbbbbb'});
 
-
+    //hash1.set('a', null);
+    hash1.remove('a', 'e');
 
 });

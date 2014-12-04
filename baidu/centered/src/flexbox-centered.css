@@ -1,0 +1,7 @@
+.centered-parent {
+    display: flex;
+}
+
+.centered-child {
+    margin: auto;
+}

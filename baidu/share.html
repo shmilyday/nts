@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html ng-app="myApp">
+<head lang="en">
+    <meta charset="UTF-8">
+    <title>社会化分享组件</title>
+</head>
+<body>
+<button id="box">分享</button>
+
+<script type="text/javascript" src="http://openapi.baidu.com/widget/social/1.0/share.js"></script>
+<script type="text/javascript">
+    var config = {
+        "afterRender":function(){
+        },
+        "content":"我是分享的内容，测试测试测试。。。。。。",
+        "client_id":"ZVEpDSsmZ0qxa1gmgDAh1Fje",
+        "theme":"native",
+        "dom_id":"box",
+        "animate":true,
+        "pic_url":"",
+        "url":encodeURIComponent(location.href)
+    };
+    baidu.socShare.init(config);
+</script>
+</body>
+</html>
