@@ -1,0 +1,80 @@
+<form class="form form-horizontal" style="width:40%;padding:20px 0 0 0;margin:0 auto;" name="registerForm"
+      ng-submit="doRegister()" novalidate>
+    <div class="form-group">
+        <div class="col-md-8">
+            <div class="input-group">
+                <div class="input-group-addon"><span class="glyphicon glyphicon-user"></span></div>
+                <input class="form-control" type="text" placeholder="用户名" ng-model="user.username" required
+                       ng-minlength="4"
+                       ng-maxlength="20" name="username" unique-user>
+            </div>
+        </div>
+        <div class="col-md-4 message">
+            <span ng-show="registerForm.username.$error.required">用户名必填</span>
+            <span ng-show="registerForm.username.$error.minlength || registerForm.username.$error.maxlength">用户名必须是4到20位</span>
+            <span ng-show="registerForm.username.$error.unique">该用户已经被注册</span>
+            <strong ng-show="registerForm.username.$valid" class="glyphicon glyphicon-ok"></strong>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <div class="col-md-8">
+            <div class="input-group">
+                <div class="input-group-addon"><span class="glyphicon glyphicon-lock"></span></div>
+                <input class="form-control" type="password" placeholder="密码" ng-model="user.password" required
+                       ng-minlength="6"
+                       ng-maxlength="20" name="password">
+            </div>
+        </div>
+        <div class="col-md-4 message">
+            <span ng-show="registerForm.password.$error.required">密码必填</span>
+            <span ng-show="registerForm.password.$error.minlength || registerForm.password.$error.maxlength">密码必须是4到20位</span>
+            <strong ng-show="registerForm.password.$valid" class="glyphicon glyphicon-ok"></strong>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <div class="col-md-8">
+            <div class="input-group">
+                <div class="input-group-addon"><span class="glyphicon glyphicon-lock"></span></div>
+                <input class="form-control" type="password" placeholder="再次输入密码" ng-model="user.repassword" required
+                       ng-minlength="6"
+                       ng-maxlength="20" name="repassword">
+            </div>
+        </div>
+        <div class="col-md-4 message">
+            <span ng-show="registerForm.password.$error.required">密码必填</span>
+            <span ng-show="registerForm.password.$error.minlength || registerForm.password.$error.maxlength">密码必须是4到20位</span>
+            <span ng-show="user.password !== user.repassword">两次密码必须一致</span>
+            <strong ng-show="registerForm.password.$valid && user.password === user.repassword" class="glyphicon glyphicon-ok"></strong>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <div class="col-md-8">
+            <div class="input-group">
+                <div class="input-group-addon"><span class="glyphicon glyphicon-envelope"></span></div>
+                <input class="form-control" type="email" placeholder="电子邮件" ng-model="user.email" required name="email">
+            </div>
+        </div>
+        <div class="col-md-4 message">
+            <span ng-show="registerForm.email.$invalid">邮箱格式必须正确</span>
+            <strong ng-show="registerForm.email.$valid" class="glyphicon glyphicon-ok"></strong>
+        </div>
+    </div>
+    <div class="form-group">
+        <div class="col-md-8">
+            <div class="input-group">
+                <div class="input-group-addon"><span class="glyphicon glyphicon-ok"></span></div>
+                <input class="form-control" type="text" placeholder="斐波那契数列中的一个数" ng-model="user.point" required name="point" good-point>
+            </div>
+        </div>
+        <div class="col-md-4 message">
+            <span ng-show="registerForm.point.$invalid">必填</span>
+            <strong ng-show="registerForm.point.$valid" class="glyphicon glyphicon-ok"></strong>
+        </div>
+    </div>
+    <div class="form-group">
+        <input class="btn btn-success" type="submit" ng-disabled="registerForm.$invalid" value="注册">
+    </div>
+</form>

@@ -1,0 +1,90 @@
+<div id="auth">
+    <div class="auth-nav" data-node="authNav">
+        <ul class="nav nav-tabs">
+            <li ui-sref-active="active"><a ui-sref="settings.kmanager">骑士管理</a></li>
+            <li ui-sref-active="active"><a ui-sref="settings.kperformance">骑士绩效</a></li>
+            <li ui-sref-active="active"><a ui-sref="settings.dmanager">调度员管理</a></li>
+            <li ui-sref-active="active"><a ui-sref="settings.comanager">合作方管理</a></li>
+            <li ui-sref-active="active"><a ui-sref="settings.stmanager">站长管理</a></li>
+        </ul>
+    </div>
+    <div class="auth-con" ui-view>
+    </div>
+</div>
+
+<style>
+    #auth {
+        color: #333;
+        height: 100%;
+    }
+
+    #auth .auth-nav {
+        width: 50px;
+        display: inline-block;
+        height: 100%;
+        padding: 0 0 100px;
+        background-color: #ccc;
+        position: fixed;
+        left: 0;
+    }
+
+    #auth .auth-nav a:hover {
+        cursor: pointer;
+    }
+
+    #auth .auth-nav .auth-con {
+        vertical-align: top;
+        padding: 0 0 0 50px;
+        height: 100%;
+    }
+
+    #auth .auth-nav .auth-con > .normal-group {
+        height: 100%;
+        display: -moz-box;
+        display: -webkit-box;
+        display: box;
+        -webkit-box-orient: vertical;
+        -moz-box-orient: vertical;
+        box-orient: vertical;
+    }
+
+    #auth .auth-nav .auth-con .table-wrapper {
+        -moz-box-flex: 1;
+        -webkit-box-flex: 1;
+        box-flex: 1;
+        overflow-y: auto;
+    }
+
+    #auth .auth-nav .nav-tabs {
+        border-radius: 0;
+        border: 0;
+    }
+
+    #auth .auth-nav a {
+        border-radius: 0;
+        border: none;
+        color: #333;
+    }
+
+    .form-group {
+        line-height: 50px;
+        padding: 0 5px;
+        vertical-align: top;
+    }
+
+    .form-group {
+        line-height: 50px;
+        padding: 0 5px;
+        vertical-align: top;
+    }
+
+    .form-control {
+        padding-left: 5px;
+        padding-right: 5px;
+        padding-top: 2px;
+        padding-bottom: 2px;
+        height: 30px;
+    }
+
+    }
+</style>

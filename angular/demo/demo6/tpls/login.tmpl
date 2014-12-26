@@ -1,0 +1,50 @@
+<form class="form form-horizontal" style="width:40%;padding:20px 0 0 0;margin:0 auto;" name="loginForm"
+      ng-submit="doLogin()" novalidate>
+    <div class="form-group">
+        <div class="col-md-8">
+            <div class="input-group">
+                <div class="input-group-addon"><span class="glyphicon glyphicon-user"></span></div>
+                <input class="form-control" type="text" placeholder="用户名" ng-model="user.username" required
+                       ng-minlength="4"
+                       ng-maxlength="20" name="username">
+            </div>
+        </div>
+        <div class="col-md-4 message">
+            <span ng-show="loginForm.username.$error.required">用户名必填</span>
+            <span ng-show="loginForm.username.$error.minlength || loginForm.username.$error.maxlength">用户名必须是4到20位</span>
+            <strong ng-show="loginForm.username.$valid" class="glyphicon glyphicon-ok"></strong>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <div class="col-md-8">
+            <div class="input-group">
+                <div class="input-group-addon"><span class="glyphicon glyphicon-lock"></span></div>
+                <input class="form-control" type="password" placeholder="密码" ng-model="user.password" required
+                       ng-minlength="6"
+                       ng-maxlength="20" name="password">
+            </div>
+        </div>
+        <div class="col-md-4 message">
+            <span ng-show="loginForm.password.$error.required">密码必填</span>
+            <span ng-show="loginForm.password.$error.minlength || loginForm.password.$error.maxlength">密码必须是4到20位</span>
+            <strong ng-show="loginForm.password.$valid" class="glyphicon glyphicon-ok"></strong>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <div class="col-md-8">
+            <div class="input-group">
+                <div class="input-group-addon"><span class="glyphicon glyphicon-envelope"></span></div>
+                <input class="form-control" type="email" placeholder="电子邮件" ng-model="user.email" required name="email">
+            </div>
+        </div>
+        <div class="col-md-4 message">
+            <span ng-show="loginForm.email.$invalid">邮箱格式必须正确</span>
+            <strong ng-show="loginForm.email.$valid" class="glyphicon glyphicon-ok"></strong>
+        </div>
+    </div>
+    <div class="form-group">
+        <input class="btn btn-success" type="submit" ng-disabled="loginForm.$invalid" value="登录">
+    </div>
+</form>

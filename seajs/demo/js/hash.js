@@ -5,7 +5,8 @@
 define(function (require, exports, module) {
 
     var uniqueNumber = 0,
-        uniquePrefixNumber = 0;
+        uniquePrefixNumber = 0,
+        prefixCache = [];
 
     function uniqueId() {
         return 'hash_namespace_' + uniqueNumber++;
@@ -15,8 +16,29 @@ define(function (require, exports, module) {
         return 'abcdefghijklmnopqrstuvwxyz'.split('')[uniquePrefixNumber++];
     }
 
+    function getRandomPrefix() {
+        var up = uniquePrefix();
+        return prefixCache.indexOf(up) !== -1 ? getRandomPrefix() : up;
+    }
+
     function getRawHash() {
         return location.hash.split('#')[1] || '';
+    }
+
+    function debounce(func, wait, immediate) {
+        var timeout, result;
+        return function () {
+            var context = this, args = arguments;
+            var later = function () {
+                timeout = null;
+                if (!immediate) result = func.apply(context, args);
+            };
+            var callNow = immediate && !timeout;
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+            if (callNow) result = func.apply(context, args);
+            return result;
+        };
     }
 
     function encodeHash(obj) {
@@ -26,7 +48,7 @@ define(function (require, exports, module) {
             if (!obj.hasOwnProperty(ele)) continue;
             v = obj[ele];
             if (Object.prototype.toString.call(v) === '[object Array]') {
-                v = v.join(',')
+                v = v.join(',');
             }
             ret.push(ele + '=' + v);
         }
@@ -49,13 +71,20 @@ define(function (require, exports, module) {
     var hashCache = {};
 
     function Hash(namespace, prefix) {
+
+        if (prefixCache.indexOf(prefix) !== -1) {
+            throw 'prefix:' + namespace + ' is exist,please replace other one';
+        }
+
         this.namespace = namespace || uniqueId();
 
         if (prefix === true) {
-            this.prefix = uniquePrefix() + '|';
+            this.prefix = getRandomPrefix() + '|';
         } else {
             this.prefix = prefix ? prefix + '|' : '';
         }
+
+        prefixCache.push(this.prefix);
 
         if (hashCache[namespace]) {
             throw 'namespace:' + namespace + ' is exist,please replace other one';
@@ -89,22 +118,35 @@ define(function (require, exports, module) {
             else {
                 key = this.prefix + key;
                 hashObj[key] = value;
-                if (v == null) {
+                if (value == null) {
                     delete hashObj[key];
                 }
                 hashKeyCache.indexOf(key) === -1 && hashKeyCache.push(key);
             }
             location.hash = encodeHash(hashObj);
+            return me;
         },
         get: function (key) {
             var hashObj = decodeHash(getRawHash());
             if (key == null) return hashObj;
             key = this.prefix + key;
             if (hashCache[this.namespace].keys.indexOf(key) === -1) return;
-
             return hashObj[key];
         },
+        remove: function () {
+            var ret = {},
+                args = Array.prototype.slice.call(arguments, 0);
+            for (var i = 0; i < args.length; i++) {
+                ret[args[i]] = null;
+            }
+            this.set(ret);
+            return this;
+        },
         on: function (option) {
+            if (typeof option === 'function') {
+                option = {fn: option};
+            }
+
             var fn = option.fn || option.callback || function () {
                     },
                 scope = option.scope || this;
@@ -112,17 +154,38 @@ define(function (require, exports, module) {
                 fn: fn,
                 scope: scope
             });
+            return this;
+        },
+        off: function () {
+            var args = Array.prototype.slice.call(arguments, 0);
+
+            if (args.length === 0) {
+                hashCache[this.namespace].handleObj = [];
+            } else {
+                var handleObj = hashCache[this.namespace].handleObj;
+                var dels = [];
+
+                for (var i = 0, len = handleObj.length; i < len; i++) {
+                    var ho = handleObj[i];
+
+                    if (args.indexOf(ho.fn) !== -1) {
+                        dels.push(ho);
+                    }
+                }
+
+                for (var i = 0, len = dels.length; i < len; i++) {
+                    hashCache[this.namespace].handleObj.splice(dels[i], 1);
+                }
+            }
+            return this;
+        },
+        trigger: function () {
+            var nsCache = hashCache[this.namespace], handleObj = nsCache.handleObj;
+            typeof handleObj.fn === 'function' && handleObj.fn.call(handleObj.scope, null, nsCache.keys);
+            return this;
         },
         getNS: function () {
             return this.namespace;
-        },
-        remove: function () {
-            var ret = {};
-            var args = Array.prototype.slice.call(arguments, 0);
-            for (var i = 0; i < args.length; i++) {
-                ret[args[i]] = null;
-            }
-            this.set(ret);
         }
     };
 
@@ -140,7 +203,9 @@ define(function (require, exports, module) {
     // see: http://zhangyaochun.iteye.com/blog/1698191
     // and: https://developer.mozilla.org/en-US/docs/Web/Events/hashchange
     // and: http://www.ruanyifeng.com/blog/2011/03/url_hash.html
-    window.onhashchange = function (hashChangeEvent) {
+    // IE9+
+    // 防抖函数，防止频繁的调用连续触发
+    window.onhashchange = debounce(function (hashChangeEvent) {
         var newHashObj = decodeHash(hashChangeEvent.newURL.split('#')[1] || ''),
             oldHashObj = decodeHash(hashChangeEvent.oldURL.split('#')[1] || ''),
             changeKey = [], ele, ns, nsCache;
@@ -158,10 +223,10 @@ define(function (require, exports, module) {
             if (!containArray(nsCache.keys, changeKey)) continue;
             for (var i = 0, len = nsCache.handleObj.length; i < len; i++) {
                 ele = nsCache.handleObj[i];
-                typeof ele.fn === 'function' && ele.fn.call(ele.scope, changeKey, nsCache);
+                typeof ele.fn === 'function' && ele.fn.call(ele.scope, changeKey, nsCache.keys);
             }
         }
-    };
+    }, 500);
 
     //return Hash;
 

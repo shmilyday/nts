@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title></title>
+    <script src="../../jquery/jquery-2.1.1.js"></script>
+    <script src="hash/jquery.lang.js"></script>
+    <script src="hash/jquery.hash.js"></script>
+</head>
+<body>
+
+
+<script>
+
+    var sHash = $.hash.init('s', true);
+    var vHash = $.hash.init('v', true);
+
+    function fn1() {
+        console.log(arguments, 'sHash fn1');
+    }
+    function fn2() {
+        console.log(arguments, 'sHash fn2');
+    }
+    function fn3() {
+        console.log(arguments, 'sHash fn3');
+    }
+    function fn4() {
+        console.log(arguments, 'sHash fn4');
+    }
+
+    function fnn1() {
+        console.log(arguments, 'vHash fn1');
+    }
+    function fnn2() {
+        console.log(arguments, 'vHash fn2');
+    }
+    function fnn3() {
+        console.log(arguments, 'vHash fn3');
+    }
+    function fnn4() {
+        console.log(arguments, 'vHash fn4');
+    }
+
+
+    sHash.on(fn1);
+    sHash.on(fn2);
+    sHash.on(fn3);
+    sHash.on(fn4);
+    sHash.off(fn2);
+
+    vHash.on(fnn1);
+    vHash.on(fnn3);
+
+
+    sHash.set({c: 1, d: 2});
+    //sHash.on(fn2);
+    //console.log('---------------------');
+
+    //sHash.trigger();
+
+    //sHash.set({c:3});
+
+
+</script>
+</body>
+</html>
