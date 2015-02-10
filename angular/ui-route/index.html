@@ -57,7 +57,7 @@
 </head>
 <body>
 <div class="container-fluid">
-    <div id="navbar" class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+    <div id="navbar" class="navbar navbar-inverse navbar-fixed-top" role="navigation" ng-controller="tabController">
         <h1 class="navbar-header navbar-title">小度驿站</h1>
         <ul class="nav navbar-nav navtabs">
             <li ui-sref-active="active">
@@ -78,7 +78,7 @@
                 <a>baidu001</a>
             </li>
             <li>
-                <a>退出</a>
+                <a ng-click="onLogout()" href="">退出</a>
             </li>
         </ul>
     </div>
@@ -88,5 +88,6 @@
 <script src="settings/settings.js"></script>
 <script src="app.js"></script>
 <script src="directives/cityareas.js"></script>
+<script src="services/cityareas.js"></script>
 </body>
 </html>

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8">
+		<title>Avalon</title>
+		<link rel="stylesheet" href="css/amazeui.css" type="text/css">
+		<style type="text/css">
+			html,body {
+				height:100%;
+			}
+			body {
+				background:#eee;
+			}
+			.area-width {
+				max-width: 90%;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="am-container" style="margin:180px auto;width:400px;" ms-important="login">
+			<h1><img src="images/logo.png" alt=""> 小度驿站（盗版）</h1>
+			<form action="" class="am-form am-form-horizontal" id="login">
+				<div class="am-form-group am-form-icon">
+					<i class="am-icon-user"></i>
+					<input type="text" class="am-form-field area-width" placeholder="请输入用户名" name="username" ms-duplex="username" ms-on-keyup="onTextFieldKeyup($event,isValid)" autofocus>
+				</div>
+				<div class="am-form-group am-form-icon">
+					<i class="am-icon-lock"></i>
+					<input type="password" class="am-form-field  area-width" placeholder="请输入密码" name="password" ms-duplex="password" ms-on-keyup="onTextFieldKeyup($event,isValid)">
+				</div>
+				<div class="am-form-group">
+					<button class="am-btn am-btn-success" type="button" ms-attr-disabled="!isValid" ms-on-click="doLogin"><i class="am-icon-sign-out"></i>登录</button>
+				</div>
+				<div class="am-form-group">
+					{{usernameMessage}} <br>
+					{{passwordMessage}} <br>
+				</div>
+			</form>
+		</div>
+		<script src="js/jquery-2.1.1.js"></script>
+		<script src="js/avalon.js"></script>
+		<script src="js/login.js"></script>
+	</body>
+</html>

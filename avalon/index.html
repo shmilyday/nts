@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8">
+		<title>Avalon</title>
+		<link rel="stylesheet" href="css/amazeui.css" type="text/css">
+		<style type="text/css">
+			.tab-right span {
+				line-height:50px;
+			}
+		</style>
+	</head>
+	<body>
+		<header class="am-topbar"  ms-important="tab">
+			<h1 class="am-topbar-brand">
+			<a href="#">小度骑士</a>
+			</h1>
+			<div class="am-collapse am-topbar-collapse" id="doc-topbar-collapse">
+				<ul class="am-nav am-nav-pills am-topbar-nav">
+					<li ms-class-am-active="orderlist" ms-on-click="onBarClick($event,'orderlist')"><a href="#">订单调度</a></li>
+					<li ms-class-am-active="monitor" ms-on-click="onBarClick($event,'monitor')"><a href="#">业务监察</a></li>
+					<li ms-class-am-active="auth" ms-on-click="onBarClick($event,'auth')"><a href="#">权限设置</a></li>
+					<li ms-class-am-active="settings" ms-on-click="onBarClick($event,'settings')"><a href="#">系统设置</a></li>
+				</ul>
+				<div class="am-topbar-right tab-right">
+					<span><i class="am-icon-user"></i> baidu001</span>
+					<a href="" ms-on-click="onLogout"><i class="am-icon-sign-out"></i> 退出</a>
+				</div>
+			</div>
+		</header>
+		<div>
+			dddd
+		</div>
+		<script src="js/jquery-2.1.1.js"></script>
+		<script src="js/amazeui.js"></script>
+		<script src="js/avalon.js"></script>
+		<script src="js/tab.js"></script>
+	</body>
+</html>

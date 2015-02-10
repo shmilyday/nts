@@ -1955,6 +1955,10 @@ function setupModuleLoader(window) {
          * @param {String=} insertMethod
          * @returns {angular.Module}
          */
+        // 通过该方法对module实例的一系列常用方法进行包装，如myModule.provider，myModule.controller
+        // 我们在调用myModule.provider(...)时实质上是数据存储（push或者unshift）而不是立即注册服务
+        // 这一点我们从invokeLater的字面意思（之后再调用）也可以看出
+        // 那么真正的执行（如注册服务），是在angularInit之后，准确的说是在loadModules的时候（之后会说到）
         function invokeLater(provider, method, insertMethod, queue) {
           if (!queue) queue = invokeQueue;
           return function() {

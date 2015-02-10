@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8">
+		<title>Function</title>
+	</head>
+	<body>
+
+		<script>
+			var filename = location.search.substring(1).split('=')[1];
+
+			var scriptElement = document.createElement('script');
+			scriptElement.src = filename + '.js';
+
+			document.body.appendChild(scriptElement);
+
+		</script>
+	</body>
+</html>
